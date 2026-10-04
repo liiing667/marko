@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+- Add a `deflist` extension that parses PHP-Markdown style definition lists (`Term` lines followed by `:` definition lines) into dedicated `DefinitionList`/`DefinitionItem`/`DefinitionTerm`/`Definition AST nodes, with HTML (`<dl>`/`<dt>`/`<dd>`), Markdown and LaTeX renderers.
+
 ## v2.2.4(2026-08-12)
 
 ### Added

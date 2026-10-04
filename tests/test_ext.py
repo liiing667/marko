@@ -151,3 +151,97 @@ class TestGFMTableLlistElement:
         text = "- Item.\n\n  |foo|bar|\n  |---|---|\n  |foo|bar|"
         md = self.md_md(text)
         assert md == "- Item.\n\n  | foo | bar |\n  | --- | --- |\n  | foo | bar |\n"
+
+
+class TestDefList:
+    sample = (
+        "Term 1\n"
+        ":   Definition 1\n"
+        ":   Definition 2\n"
+        "\n"
+        "Term 2\n"
+        ":   Definition 2.1\n"
+    )
+
+    def setup_method(self):
+        self.markdown = Markdown(extensions=["deflist"])
+
+    def test_render_html(self):
+        result = self.markdown(self.sample)
+        assert result == (
+            "<dl>\n"
+            "<dt>Term 1</dt>\n"
+            "<dd>Definition 1</dd>\n"
+            "<dd>Definition 2</dd>\n"
+            "<dt>Term 2</dt>\n"
+            "<dd>Definition 2.1</dd>\n"
+            "</dl>\n"
+        )
+
+    def test_ast_structure(self):
+        from marko.ext.deflist import (
+            Definition,
+            DefinitionItem,
+            DefinitionList,
+            DefinitionTerm,
+        )
+
+        doc = self.markdown.parse(self.sample)
+        dlist = doc.children[0]
+        assert isinstance(dlist, DefinitionList)
+        assert len(dlist.children) == 2
+        item = dlist.children[0]
+        assert isinstance(item, DefinitionItem)
+        assert isinstance(item.children[0], DefinitionTerm)
+        definitions = [c for c in item.children if isinstance(c, Definition)]
+        assert len(definitions) == 2
+
+    def test_disabled_by_default(self):
+        result = Markdown()(self.sample)
+        assert "<dl>" not in result
+        assert result.startswith("<p>Term 1\n:   Definition 1")
+
+    def test_inline_and_nested_blocks(self):
+        result = self.markdown(
+            "Term *em*\n:   Definition with **strong**\n\n    - item 1\n    - item 2\n"
+        )
+        assert "<dt>Term <em>em</em></dt>" in result
+        assert "<strong>strong</strong>" in result
+        assert "<ul>" in result and "<li>item 1</li>" in result
+
+    def test_tight_items_without_blank_lines(self):
+        result = self.markdown("Term 1\n:   Def 1\nTerm 2\n:   Def 2\n")
+        assert result == (
+            "<dl>\n"
+            "<dt>Term 1</dt>\n"
+            "<dd>Def 1</dd>\n"
+            "<dt>Term 2</dt>\n"
+            "<dd>Def 2</dd>\n"
+            "</dl>\n"
+        )
+
+    def test_orphan_definition_is_paragraph(self):
+        result = self.markdown("Para text\n\n:   orphan\n")
+        assert "<dl>" not in result
+
+    def test_markdown_round_trip(self):
+        from marko.md_renderer import MarkdownRenderer
+
+        markdown = Markdown(renderer=MarkdownRenderer, extensions=["deflist"])
+        assert markdown(self.sample) == self.sample
+
+    def test_markdown_round_trip_loose(self):
+        from marko.md_renderer import MarkdownRenderer
+
+        text = "Term\n:   Def 1\n\n:   Def 2\n"
+        markdown = Markdown(renderer=MarkdownRenderer, extensions=["deflist"])
+        assert markdown(text) == text
+
+    def test_latex_renderer(self):
+        from marko.ext.latex_renderer import LatexRenderer
+
+        markdown = Markdown(renderer=LatexRenderer, extensions=["deflist"])
+        result = markdown(self.sample)
+        assert "\\begin{description}" in result
+        assert "\\item[Term 1] Definition 1" in result
+        assert "\\end{description}" in result
