@@ -151,3 +151,95 @@ class TestGFMTableLlistElement:
         text = "- Item.\n\n  |foo|bar|\n  |---|---|\n  |foo|bar|"
         md = self.md_md(text)
         assert md == "- Item.\n\n  | foo | bar |\n  | --- | --- |\n  | foo | bar |\n"
+
+
+class TestDefList:
+    def setup_method(self):
+        self.markdown = Markdown(extensions=["def_list"])
+
+    def test_ast_nodes(self):
+        text = "Term 1\n:   Definition 1\n:   Definition 2\n"
+        def_list = self.markdown.parse(text).children[0]
+        assert def_list.get_type() == "DefList"
+        types = [child.get_type() for child in def_list.children]
+        assert types == [
+            "DefListTerm",
+            "DefListItem",
+            "DefListItem",
+        ]
+
+    def test_multiple_definitions(self):
+        text = "Term 1\n:   Definition 1\n:   Definition 2\n"
+        assert self.markdown(text) == (
+            "<dl>\n"
+            "<dt>Term 1</dt>\n"
+            "<dd>Definition 1</dd>\n"
+            "<dd>Definition 2</dd>\n"
+            "</dl>\n"
+        )
+
+    def test_blank_line_between_groups(self):
+        text = "Term 1\n:   Definition 1\n\nTerm 2\n:   Definition 2.1\n"
+        result = self.markdown(text)
+        assert result == (
+            "<dl>\n"
+            "<dt>Term 1</dt>\n"
+            "<dd>Definition 1</dd>\n"
+            "<dt>Term 2</dt>\n"
+            "<dd>Definition 2.1</dd>\n"
+            "</dl>\n"
+        )
+
+    def test_inline_markup_and_nested_list(self):
+        text = (
+            "Term\n"
+            ":   Definition with *emphasis*\n"
+            "    - item 1\n"
+            "    - item 2\n"
+        )
+        result = self.markdown(text)
+        assert "<em>emphasis</em>" in result
+        assert "<li>item 1</li>" in result
+        assert "<li>item 2</li>" in result
+
+    def test_multiple_paragraph_definition(self):
+        text = "Term\n:   First paragraph.\n\n    Second paragraph.\n"
+        result = self.markdown(text)
+        assert "<p>First paragraph.</p>" in result
+        assert "<p>Second paragraph.</p>" in result
+
+    def test_without_extension_stays_paragraph(self):
+        markdown = Markdown()
+        result = markdown("Term 1\n:   Definition 1\n")
+        assert result == "<p>Term 1\n:   Definition 1</p>\n"
+
+    def test_marker_without_term(self):
+        result = self.markdown("foo\n\n: orphan definition\n")
+        assert "<dl>" not in result
+        assert ": orphan definition" in result
+
+    def test_setext_underline_is_not_a_term(self):
+        result = self.markdown("Term\n---\n: not a definition\n")
+        assert "<h2>Term</h2>" in result
+        assert "<dl>" not in result
+
+    def test_markdown_renderer_roundtrip(self):
+        from marko.md_renderer import MarkdownRenderer
+
+        markdown = Markdown(renderer=MarkdownRenderer, extensions=["def_list"])
+        text = (
+            "Term 1\n:   Definition 1\n:   Definition 2\n"
+            "\n"
+            "Term 2\n:   Definition 2.1 with *markup*\n"
+        )
+        assert markdown.convert(text) == text
+
+    def test_latex_renderer(self):
+        from marko.ext.latex_renderer import LatexRenderer
+
+        markdown = Markdown(renderer=LatexRenderer, extensions=["def_list"])
+        result = markdown.convert("Term 1\n:   Definition 1\n:   Definition 2\n")
+        assert "\\begin{description}" in result
+        assert "\\item[Term 1] Definition 1" in result
+        assert "\\item[] Definition 2" in result
+        assert "\\end{description}" in result

@@ -21,6 +21,7 @@ class LatexRendererMixin:
     def __init__(self):
         super().__init__()
         self._packages = set()
+        self._def_list_term = ""
 
     def __enter__(self):
         self._packages_back = self._packages.copy()
@@ -62,6 +63,21 @@ class LatexRendererMixin:
     def render_list_item(self, element):
         children = self.render_children(element)
         return f"\\item {children}\n"
+
+    def render_def_list(self, element):
+        children = self.render_children(element)
+        return self._environment("description", children)
+
+    def render_def_list_term(self, element):
+        # LaTeX's \item takes the term as an optional argument, so the term
+        # is stashed here and picked up when rendering the following item.
+        self._def_list_term = self.render_children(element)
+        return ""
+
+    def render_def_list_item(self, element):
+        children = self.render_children(element)
+        term, self._def_list_term = self._def_list_term, ""
+        return f"\\item[{term}] {children}\n"
 
     def render_quote(self, element):
         self._packages.add("csquotes")

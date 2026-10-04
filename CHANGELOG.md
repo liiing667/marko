@@ -2,6 +2,7 @@
 
 ### Added
 
+- Add a `def_list` extension that parses PHP-Markdown style definition lists into dedicated `DefList`/`DefListTerm`/`DefListItem` AST nodes, rendered as `<dl>`/`<dt>`/`<dd>` in HTML, `description` environments in LaTeX, and round-tripped by the Markdown renderer.
 - Add source mapping for AST elements. Every element now carries a `source_span` attribute (a `(start, end)` tuple of indices into the source text) plus the `start_pos`/`end_pos` convenience properties, and inline elements expose their pure-syntax parts (e.g. emphasis markers, code span backticks, link brackets) via `syntax_spans`. This enables features like syntax highlighting. [#273](https://github.com/frostming/marko/issues/273)
 
 ### Fixed
